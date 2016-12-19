@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	usePram = structPram
+	usePram = stringPram
 	srcPath = "testdata/demo.png"
 	dirPath = "testdata/"
 )
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	start := time.Now()
-	log.Println("ZopfliPng Starting .....")
+	log.Println("Starting .....")
 
 	switch usePram {
 	case slicePram:
