@@ -6,7 +6,6 @@ package binding
 #include "../vendor/pngquant.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "fmemopen.h"
 */
 import "C"
 import (
@@ -17,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/chrisfelesoid/cgostdio"
 )
 
 const pngquant = "pngquant"
@@ -83,10 +84,8 @@ func Pngquant(cmds []string, src []byte) ([]byte, error) {
 		}
 	}()
 
-	rb := C.CString("rb")
-	defer C.free(unsafe.Pointer(rb))
-
-	C.stdin = C.fmemopen(unsafe.Pointer(&src[0]), C.size_t(len(src)), (*C.char)(unsafe.Pointer(rb)))
+	f := cgostdio.NewStdinFromBuffer(src)
+	defer f.Close()
 
 	b, err := WriteCaptureWithCGo(func() error {
 		res := C.pngquant(argc, (**C.char)(&argv[0]))
@@ -101,16 +100,6 @@ func Pngquant(cmds []string, src []byte) ([]byte, error) {
 	return b, nil
 }
 
-func OutputFile(b []byte, path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	file.Write(b)
-	return nil
-}
-
 func WriteCaptureWithCGo(call func() error) ([]byte, error) {
 	originalStdOut := os.Stdout
 	originalCStdOut := C.stdout
@@ -123,11 +112,7 @@ func WriteCaptureWithCGo(call func() error) ([]byte, error) {
 		return nil, err
 	}
 
-	cw := C.CString("w")
-	defer C.free(unsafe.Pointer(cw))
-
-	f := C.fdopen((C.int)(w.Fd()), cw)
-	os.Stdout, C.stdout = w, f
+	f := cgostdio.NewStdout(w)
 
 	out := make(chan []byte)
 	errch := make(chan error)
@@ -146,10 +131,10 @@ func WriteCaptureWithCGo(call func() error) ([]byte, error) {
 		return nil, err
 	}
 
-	C.fflush(f)
-
-	err = w.Close()
-	if err != nil {
+	if err := f.Flush(); err != nil {
+		return nil, err
+	}
+	if err := f.Close(); err != nil {
 		return nil, err
 	}
 

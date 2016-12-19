@@ -9,6 +9,8 @@ import (
 
 	"time"
 
+	"os"
+
 	"github.com/kiwamunet/go-pngquant/binding"
 )
 
@@ -57,7 +59,7 @@ func main() {
 	}
 
 	// output test
-	err = binding.OutputFile(b, dirPath+random()+".png")
+	err = outputFile(b, dirPath+random()+".png")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,4 +96,14 @@ func random() string {
 	var n uint64
 	binary.Read(rand.Reader, binary.LittleEndian, &n)
 	return strconv.FormatUint(n, 36)
+}
+
+func outputFile(b []byte, path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	file.Write(b)
+	return nil
 }

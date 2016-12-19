@@ -13,8 +13,16 @@ go get github.com/kiwamunet/go-pngquant
 #### make static library
 
 ```
-git clong git@github.com:kiwamunet/pngquant.git./configure --without-cocoamake ar rcs libpngquant.a *.o lib/*.ocp libpngquant.a vender/cp pngquant.h vender/
+git clong git@github.com:kiwamunet/pngquant.git./configure --without-cocoamake ar rcs libpngquant.a *.o lib/*.ocp libpngquant.a vender/libpngquant.acp pngquant.h vender/
 ```
+
+## Std I/O
+
+The following stdio is used for std processing.  
+For details, please check from the link
+
+[cgostdio](https://github.com/chrisfelesoid/cgostdio)
+
 
 # Use
 
