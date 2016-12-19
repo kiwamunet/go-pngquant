@@ -11,8 +11,8 @@ package binding
 import "C"
 import (
 	"bytes"
+	"errors"
 	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -28,7 +28,7 @@ type PngquantParams struct {
 	QualityMax int
 }
 
-func PngquantStruct(p PngquantParams, src []byte) (b []byte, err error) {
+func PngquantStruct(p PngquantParams, src []byte) ([]byte, error) {
 	cmds := []string{pngquant}
 
 	if p.NumColors > 0 && p.NumColors <= 256 {
@@ -50,51 +50,72 @@ func PngquantStruct(p PngquantParams, src []byte) (b []byte, err error) {
 	return Pngquant(cmds, src)
 }
 
-func PngquantOneLine(str string, src []byte) (b []byte, err error) {
+func PngquantOneLine(str string, src []byte) ([]byte, error) {
 	return Pngquant(strings.Split(strings.TrimSpace(str), " "), src)
 }
 
-func Pngquant(cmds []string, src []byte) (b []byte, err error) {
-	cmds = checkCommands(cmds)
+func Pngquant(cmds []string, src []byte) ([]byte, error) {
+
+	if len(cmds) == 0 {
+		return src, errors.New("Nothing Parameters")
+	}
+
+	if strings.ToLower(cmds[0]) != pngquant {
+		cmds = insertSlice(cmds, 0, pngquant)
+	}
+
+	for i, v := range cmds {
+		if v == "-" {
+			cmds = cmds[:i]
+			break
+		}
+	}
+	cmds = appendSlice(cmds, "-")
 
 	argc := C.int(len(cmds))
 	argv := make([]*C.char, int(argc))
 	for i, arg := range cmds {
 		argv[i] = C.CString(arg)
 	}
+	defer func() {
+		for _, v := range argv {
+			C.free(unsafe.Pointer(v))
+		}
+	}()
 
 	rb := C.CString("rb")
 	defer C.free(unsafe.Pointer(rb))
 
-	// TODO: fmemopenを使わずにReadCaptureWithCGoにする
 	C.stdin = C.fmemopen(unsafe.Pointer(&src[0]), C.size_t(len(src)), (*C.char)(unsafe.Pointer(rb)))
 
-	b, err = WriteCaptureWithCGo(func() {
+	b, err := WriteCaptureWithCGo(func() error {
 		res := C.pngquant(argc, (**C.char)(&argv[0]))
 		if res != 0 {
-			// TODO: ここの処理をちゃんとする
-			log.Println(res)
+			return errorType(res).sError()
 		}
+		return nil
 	})
-	return b, err
+	if err != nil {
+		return src, err
+	}
+	return b, nil
 }
 
-func OutputFile(b []byte, path string) (e error) {
+func OutputFile(b []byte, path string) error {
 	file, err := os.Create(path)
 	if err != nil {
-		e = err
+		return err
 	}
 	defer file.Close()
 	file.Write(b)
-	return
+	return nil
 }
 
-func WriteCaptureWithCGo(call func()) ([]byte, error) {
-	originalStdErr, originalStdOut := os.Stderr, os.Stdout
-	originalCStdErr, originalCStdOut := C.stderr, C.stdout
+func WriteCaptureWithCGo(call func() error) ([]byte, error) {
+	originalStdOut := os.Stdout
+	originalCStdOut := C.stdout
 	defer func() {
-		os.Stderr, os.Stdout = originalStdErr, originalStdOut
-		C.stderr, C.stdout = originalCStdErr, originalCStdOut
+		os.Stdout, C.stdout = originalStdOut, originalCStdOut
 	}()
 
 	r, w, err := os.Pipe()
@@ -106,24 +127,24 @@ func WriteCaptureWithCGo(call func()) ([]byte, error) {
 	defer C.free(unsafe.Pointer(cw))
 
 	f := C.fdopen((C.int)(w.Fd()), cw)
-
-	os.Stderr, os.Stdout = w, w
-	C.stderr, C.stdout = f, f
+	os.Stdout, C.stdout = w, f
 
 	out := make(chan []byte)
+	errch := make(chan error)
 	go func() {
 		var b bytes.Buffer
 
 		_, err := io.Copy(&b, r)
 		if err != nil {
-			// TODO: panic 使わない
-			panic(err)
+			errch <- err
+			return
 		}
-
 		out <- b.Bytes()
 	}()
 
-	call()
+	if err = call(); err != nil {
+		return nil, err
+	}
 
 	C.fflush(f)
 
@@ -132,26 +153,12 @@ func WriteCaptureWithCGo(call func()) ([]byte, error) {
 		return nil, err
 	}
 
-	return <-out, err
-}
-
-func checkCommands(src []string) (dst []string) {
-	dst = src
-	if len(src) == 0 {
-		return
+	select {
+	case v := <-out:
+		return v, nil
+	case err := <-errch:
+		return nil, err
 	}
-
-	if strings.ToLower(src[0]) != pngquant {
-		dst = insertSlice(src, 0, pngquant)
-	}
-
-	for _, v := range dst {
-		if v == "-" {
-			return
-		}
-	}
-	dst = appendSlice(dst, "-")
-	return
 }
 
 func appendSlice(src []string, v string) []string {
