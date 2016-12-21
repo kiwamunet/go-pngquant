@@ -11,7 +11,7 @@ import (
 
 	"os"
 
-	"github.com/kiwamunet/go-pngquant/binding"
+	"github.com/kiwamunet/go-pngquant"
 )
 
 const (
@@ -69,22 +69,22 @@ func main() {
 
 func sliceParam(src []byte) ([]byte, error) {
 	strings := []string{"Pngquant", "256", "--speed", "3", "--quality", "0-100"}
-	return binding.Pngquant(strings, src)
+	return pngquant.Pngquant(strings, src)
 }
 
 func stringParam(src []byte) ([]byte, error) {
 	string := "Pngquant 256 --speed 3 --quality 0-100"
-	return binding.PngquantOneLine(string, src)
+	return pngquant.PngquantOneLine(string, src)
 }
 
 func structParam(src []byte) ([]byte, error) {
-	st := binding.PngquantParams{
+	st := pngquant.PngquantParams{
 		NumColors:  256,
 		Speed:      3,
 		QualityMin: 0,
 		QualityMax: 100,
 	}
-	return binding.PngquantStruct(st, src)
+	return pngquant.PngquantStruct(st, src)
 }
 
 func getImageData() (b []byte, e error) {

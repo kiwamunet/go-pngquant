@@ -1,46 +1,36 @@
-# go-pngquant
+# pngquant 2
 
+[pngquant](https://pngquant.org) converts 24/32-bit RGBA PNGs to 8-bit palette with *alpha channel preserved*.
+Such images are fully standards-compliant and are supported by all web browsers.
 
-Go go-pngquant is a Go bind to [pornel/pngquant](https://github.com/pornel/pngquant).
+Quantized files are often 60-80% smaller than their 24/32-bit versions.
 
+This utility works on Linux, Mac OS X and Windows. [This](https://github.com/pornel/pngquant) is the official `pngquant` repository.
 
-# Install
+## Usage
 
-```
-go get github.com/kiwamunet/go-pngquant
-```
+- batch conversion of multiple files: `pngquant *.png`
+- Unix-style stdin/stdout chaining: `… | pngquant - | …`
 
-## Std I/O
+To further reduce file size, try [optipng](http://optipng.sourceforge.net), [ImageOptim](https://imageoptim.com), or [zopflipng](https://github.com/google/zopfli).
 
-The following stdio is used for std processing.  
-For details, please check from the link
+## Improvements since 1.0
 
-[cgostdio](https://github.com/chrisfelesoid/cgostdio)
+Generated files are both smaller and look much better.
 
+* Significantly better quality of quantisation
 
-# Use
+  - more accurate remapping of semitransparent colors
+  - special dithering algorithm that does not add noise in well-quantized areas of the image
+  - supports much larger number of colors in input images without degradation of quality
+  - gamma correction and optional color profile support (output is always in gamma 2.2 for web compatibility)
 
-```
-func sliceParam(src []byte) ([]byte, error) {
-	strings := []string{"Pngquant", "256", "--speed", "3", "--quality", "0-100"}
-	return binding.Pngquant(strings, src)
-}
+* Refactored and modernised code
 
-func stringParam(src []byte) ([]byte, error) {
-	string := "Pngquant 256 --speed 3 --quality 0-100"
-	return binding.PngquantOneLine(string, src)
-}
-
-func structParam(src []byte) ([]byte, error) {
-	st := binding.PngquantParams{
-		NumColors:  256,
-		Speed:      3,
-		QualityMin: 0,
-		QualityMax: 100,
-	}
-	return binding.PngquantStruct(st, src)
-}
-```
+  - quantization [moved to standalone libimagequant](https://github.com/ImageOptim/libimagequant)
+  - C99 with no workarounds for legacy systems or compilers ([apart from Visual Studio](https://github.com/pornel/pngquant/tree/msvc))
+  - Intel SSE optimisations and floating-point math used throughout
+  - multicore support via OpenMP
 
 ## Options
 
@@ -80,10 +70,6 @@ Controls level of dithering (0 = none, 1 = full). Note that the `=` character is
 
 Reduce precision of the palette by number of bits. Use when the image will be displayed on low-depth screens (e.g. 16-bit displays or compressed textures in ARGB444 format).
 
-### `--strip`
-
-Don't copy optional PNG chunks. Metadata is always removed on Mac (when using Cocoa reader).
-
 ### `--version`
 
 Print version information to stdout.
@@ -97,7 +83,7 @@ Read image from stdin and send result to stdout.
 Stops processing of arguments. This allows use of file names that start with `-`. If you're using pngquant in a script, it's advisable to put this before file names:
 
     pngquant $OPTIONS -- "$FILE"
-    
+
 ## License
 
 pngquant is dual-licensed:

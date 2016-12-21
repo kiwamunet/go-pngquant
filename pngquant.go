@@ -1,9 +1,11 @@
-package binding
+package pngquant
 
 /*
 #cgo pkg-config: libpng
-#cgo LDFLAGS: -L${SRCDIR}/../vendor -lpngquant
-#include "../vendor/pngquant.h"
+#cgo CFLAGS: -I../internal/pngquant/lib
+#cgo CFLAGS: -I../internal/pngquant
+#cgo CFLAGS: -I../internal
+#include "internal/pngquant/pngquant.h"
 #include <stdio.h>
 #include <stdlib.h>
 */

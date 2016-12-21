@@ -1,9 +1,7 @@
-package binding
+package pngquant
 
 /*
-#cgo pkg-config: libpng
-#cgo LDFLAGS: -L${SRCDIR}/../vendor -lpngquant
-#include "../vendor/rwpng.h"
+#include "internal/pngquant/rwpng.h"
 */
 import "C"
 import "fmt"
